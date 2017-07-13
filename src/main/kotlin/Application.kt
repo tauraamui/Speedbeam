@@ -5,6 +5,7 @@ import khttp.responses.Response
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.ConnectException
+import kotlin.concurrent.thread
 
 /**
  * Created by tauraamui on 12/07/2017.
@@ -86,7 +87,7 @@ data class Light(var id: Int = -1, var productId: String = "", var modelId: Stri
     }
 }
 
-data class LightState(var xy: Pair<Double, Double> = Pair(-1.0, -1.0), var ct: Int = -1, var alert: String = "", var sat: Int = -1, var effect: String = "",
+data class LightState(var xy: Pair<Double, Double> = Pair(0.0, 0.0), var ct: Int = -1, var alert: String = "", var sat: Int = -1, var effect: String = "",
                       var brightness: Int = -1, var hue: Int = -1, var colorMode: String = "", var reachable: Boolean = false, var on: Boolean = false) {
     fun toJSON(): JSONObject {
         val mappedValues = mapOf("xy" to JSONArray(listOf(xy.first, xy.second)), "ct" to ct, "alert" to alert, "sat" to sat, "effect" to effect, "bri" to brightness,
@@ -102,12 +103,24 @@ fun main(args: Array<String>) {
     val speedBeam = Speedbeam(hubIp, username)
 
     if (speedBeam.isReachable()) {
-        while (true) {
-            Thread.sleep(3000)
-            speedBeam.getLights().forEach { light ->
-                light.state.xy = Pair(10.0, 10.0)
-                light.state.on = !light.state.on
-                speedBeam.updateLight(light)
+
+        speedBeam.getLights().forEach { light ->
+            thread {
+                while (true) {
+                    Thread.sleep(2000)
+                    var x = light.state.xy.first
+                    var y = light.state.xy.second
+                    if (x < 1) x += 0.01
+                    if (y < 1) y += 0.01
+                    if (x + 0.01 > x) x = 0.01
+                    if (y + 0.01 > y) y = 0.01
+                    light.state.xy = Pair(x, y)
+
+                    if (light.state.ct < 500) light.state.ct += 1
+                    if (light.state.ct > 500) light.state.ct = 153
+
+                    speedBeam.updateLight(light)
+                }
             }
         }
     }
