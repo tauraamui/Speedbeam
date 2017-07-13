@@ -1,8 +1,10 @@
+
 import khttp.get
 import khttp.put
 import khttp.responses.Response
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.ConnectException
 
 /**
  * Created by tauraamui on 12/07/2017.
@@ -13,21 +15,41 @@ class Speedbeam(hubIp: String, username: String) {
     val hubIp = hubIp
     val username = username
 
+    fun isReachable(): Boolean {
+        var reachable = false
+        try {
+            reachable = get("http://$hubIp/api/$username/lights").jsonObject.keys().hasNext()
+        } catch (e: ConnectException) { println(e) }
+        return reachable
+    }
+
     fun updateLight(light: Light): Boolean {
-        val response = put("http://$hubIp/api/$username/lights/${light.id}/state", data=light.state.toJSON())
-        return response.statusCode == 200
+        var response: Response? = null
+        try {
+            response = put("http://$hubIp/api/$username/lights/${light.id}/state", data=light.state.toJSON())
+        } catch (e: ConnectException) { println(e) }
+        if (response != null)
+            return response?.statusCode == 200
+        return false
     }
 
     private fun getLightsInfo(): JSONObject {
-        return get("http://$hubIp/api/$username/lights").jsonObject
+        var info = JSONObject()
+        try {
+            info = get("http://$hubIp/api/$username/lights").jsonObject
+        } catch (e: ConnectException) { println(e) }
+        return info
     }
 
     private fun getLightInfo(lightId: String): JSONObject {
-        return get("http://$hubIp/api/$username/lights/$lightId/state").jsonObject
+        var info = JSONObject()
+        try {
+            info = get("http://$hubIp/api/$username/lights/$lightId/state").jsonObject
+        } catch (e: ConnectException) { println(e) }
+        return info
     }
 
     fun getLight(lightId: String): Light {
-
         val lightInfoJSON: JSONObject = (getLightsInfo()[lightId] as JSONObject)
 
         val lightStateJSON = lightInfoJSON["state"] as JSONObject
@@ -79,14 +101,14 @@ fun main(args: Array<String>) {
 
     val speedBeam = Speedbeam(hubIp, username)
 
-    speedBeam.getLights().forEach(::println)
-
-    while (true) {
-        Thread.sleep(3000)
-        speedBeam.getLights().forEach { light ->
-            light.state.xy = Pair(10.0, 10.0)
-            light.state.on = !light.state.on
-            speedBeam.updateLight(light)
+    if (speedBeam.isReachable()) {
+        while (true) {
+            Thread.sleep(3000)
+            speedBeam.getLights().forEach { light ->
+                light.state.xy = Pair(10.0, 10.0)
+                light.state.on = !light.state.on
+                speedBeam.updateLight(light)
+            }
         }
     }
 }
