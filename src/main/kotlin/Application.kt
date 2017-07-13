@@ -104,21 +104,35 @@ fun main(args: Array<String>) {
 
     if (speedBeam.isReachable()) {
 
+        var incDirection = 1
+        var xIncDirection = 0.00001
+
         speedBeam.getLights().forEach { light ->
             thread {
                 while (true) {
-                    Thread.sleep(2000)
+
+                    val y = 0.3
                     var x = light.state.xy.first
-                    var y = light.state.xy.second
-                    if (x < 1) x += 0.01
-                    if (y < 1) y += 0.01
-                    if (x + 0.01 > x) x = 0.01
-                    if (y + 0.01 > y) y = 0.01
+
+                    if (x <= 0.3) {
+                        x = 0.30001
+                        xIncDirection *= -1
+                    } else if (x >= 0.6680) {
+                        x = 0.6678
+                        xIncDirection *= -1
+                    }
+
+                    x += xIncDirection
                     light.state.xy = Pair(x, y)
 
-                    if (light.state.ct < 500) light.state.ct += 1
-                    if (light.state.ct > 500) light.state.ct = 153
-
+                    if (light.state.brightness <= 0) {
+                        light.state.brightness = 1
+                        incDirection *= -1
+                    } else if (light.state.brightness >= 255) {
+                        light.state.brightness = 254
+                        incDirection *= -1
+                    }
+                    light.state.brightness += incDirection
                     speedBeam.updateLight(light)
                 }
             }
