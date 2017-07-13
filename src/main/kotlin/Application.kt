@@ -13,20 +13,8 @@ class Speedbeam(hubIp: String, username: String) {
     val hubIp = hubIp
     val username = username
 
-    fun turnLightOn(light: Light): Boolean {
-        val payload = mapOf("on" to true)
-        val response = put("http://$hubIp/api/$username/lights/${light.id}/state", data=JSONObject(payload))
-        return response.statusCode == 200
-    }
-
-    fun turnLightOff(light: Light): Boolean {
-        val payload = mapOf("on" to false)
-        val response = put("http://$hubIp/api/$username/lights/${light.id}/state", data=JSONObject(payload))
-        return response.statusCode == 200
-    }
-
     fun updateLight(light: Light): Boolean {
-        val response = put("http://$hubIp/api/$username/lights/${light.id}/state", data=JSONObject(light.toJSON()))
+        val response = put("http://$hubIp/api/$username/lights/${light.id}/state", data=light.state.toJSON())
         return response.statusCode == 200
     }
 
@@ -34,8 +22,8 @@ class Speedbeam(hubIp: String, username: String) {
         return get("http://$hubIp/api/$username/lights").jsonObject
     }
 
-    private fun getLightInfo(lightId: Int): JSONObject {
-        return get("http://$hubIp/api/$username/lights/${lightId.toInt()}/state").jsonObject
+    private fun getLightInfo(lightId: String): JSONObject {
+        return get("http://$hubIp/api/$username/lights/$lightId/state").jsonObject
     }
 
     fun getLight(lightId: String): Light {
@@ -46,7 +34,7 @@ class Speedbeam(hubIp: String, username: String) {
 
         val xy = lightStateJSON["xy"] as JSONArray
 
-        val lightState = LightState(xy = Pair(xy[0], xy[1]) as Pair<Float, Float>, ct = lightStateJSON["ct"] as Int, alert = lightStateJSON["alert"].toString(),
+        val lightState = LightState(xy = Pair(xy[0], xy[1]) as Pair<Double, Double>, ct = lightStateJSON["ct"] as Int, alert = lightStateJSON["alert"].toString(),
                 sat = lightStateJSON["sat"] as Int, effect = lightStateJSON["effect"].toString(), brightness = lightStateJSON["bri"] as Int,
                 hue = lightStateJSON["hue"] as Int, colorMode = lightStateJSON["colormode"].toString(), reachable = lightStateJSON["reachable"] as Boolean,
                 on = lightStateJSON["on"] as Boolean)
@@ -76,10 +64,12 @@ data class Light(var id: Int = -1, var productId: String = "", var modelId: Stri
     }
 }
 
-data class LightState(var xy: Pair<Float, Float> = Pair(-1F, -1F), var ct: Int = -1, var alert: String = "", var sat: Int = -1, var effect: String = "",
+data class LightState(var xy: Pair<Double, Double> = Pair(-1.0, -1.0), var ct: Int = -1, var alert: String = "", var sat: Int = -1, var effect: String = "",
                       var brightness: Int = -1, var hue: Int = -1, var colorMode: String = "", var reachable: Boolean = false, var on: Boolean = false) {
-    fun toJSON() {
-        //val mappedValues =
+    fun toJSON(): JSONObject {
+        val mappedValues = mapOf("xy" to JSONArray(listOf(xy.first, xy.second)), "ct" to ct, "alert" to alert, "sat" to sat, "effect" to effect, "bri" to brightness,
+                                 "hue" to hue, "colormode" to colorMode, "reachable" to reachable, "on" to on)
+        return JSONObject(mappedValues)
     }
 }
 
@@ -94,7 +84,6 @@ fun main(args: Array<String>) {
     while (true) {
         Thread.sleep(3000)
         speedBeam.getLights().forEach { light ->
-
             light.state.on = !light.state.on
             speedBeam.updateLight(light)
         }
