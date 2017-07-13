@@ -84,6 +84,7 @@ fun main(args: Array<String>) {
     while (true) {
         Thread.sleep(3000)
         speedBeam.getLights().forEach { light ->
+            light.state.xy = Pair(10.0, 10.0)
             light.state.on = !light.state.on
             speedBeam.updateLight(light)
         }
